@@ -1,11 +1,10 @@
 package main
 
 import (
-  "fmt"
 	"encoding/json"
+	"flag"
+	"fmt"
 	"io/ioutil"
-  "flag"
-  "os"
 )
 
 type Askfm struct {
@@ -15,12 +14,9 @@ type Askfm struct {
 }
 
 func main() {
-  index := flag.Int("index", -1, "index of QA")
-  flag.Parse()
-  if *index == -1 {
-    flag.PrintDefaults()
-    os.Exit(1)
-  }
+	var index int
+	flag.IntVar(&index, "index", -1, "index of QA (-1: all)")
+	flag.Parse()
 	data, err := ioutil.ReadFile("qa_trim.json")
 	if err != nil {
 		panic(err)
@@ -30,10 +26,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-  if len(askfm) <= *index {
-    fmt.Fprintln(os.Stderr, "index out of range")
-    os.Exit(1)
-  }
-  fmt.Println(askfm[*index].Question)
-  fmt.Println(askfm[*index].Answer)
+	if 0 <= index && index < len(askfm) {
+		fmt.Printf("%v %v\n", askfm[index].Question, askfm[index].Answer)
+	} else {
+		for i := range askfm {
+      fmt.Printf("%v %v\n", askfm[i].Question, askfm[i].Answer)
+		}
+	}
 }
