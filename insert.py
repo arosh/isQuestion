@@ -22,19 +22,18 @@ def main():
     init()
 
     with sqlite3.connect('ezoe_qa.sqlite3') as con:
-        c = con.cursor()
-        c.row_factory = sqlite3.Row
+        con.row_factory = sqlite3.Row
 
         for fname in glob.glob('database/*.json'):
             with codecs.open(fname, 'r', 'utf_8') as f:
                 o = json.load(f)
                 for qa in o:
-                    c.execute('SELECT COUNT(*) FROM ezoe_qa WHERE url=:url', qa)
+                    c = con.execute('SELECT COUNT(*) FROM ezoe_qa WHERE url=:url', qa)
                     if c.fetchone()[0] == 0:
                         qa['question'] = trim(qa['question'])
                         qa['answer'] = trim(qa['answer'])
                         qa['url'] = trim(qa['url'])
-                        c.execute('INSERT INTO ezoe_qa (question, answer, url) VALUES (:question, :answer, :url)', qa)
+                        con.execute('INSERT INTO ezoe_qa (question, answer, url) VALUES (:question, :answer, :url)', qa)
 
 if __name__ == '__main__':
     main()
