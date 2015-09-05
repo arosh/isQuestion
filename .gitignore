@@ -1,2 +1,5 @@
-database/
-ezoe_qa.sqlite3
+corpus
+capture.png
+*.pyc
+*.pkl
+*.npy
