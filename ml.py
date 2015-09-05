@@ -3,6 +3,7 @@ from __future__ import division, print_function, unicode_literals
 
 import codecs
 import glob
+import itertools
 import json
 import os
 import sys
@@ -14,8 +15,10 @@ import sklearn.utils
 from sklearn.externals import joblib
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.grid_search import RandomizedSearchCV
+from sklearn.linear_model import SGDClassifier
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.svm import SVC
 
 import features
 import normalize
@@ -23,6 +26,10 @@ import normalize
 
 def best_cv_num(n):
     return int(1 + numpy.log2(n))
+
+
+def best_n_iter(n):
+    return numpy.ceil(10 ** 6 / n)
 
 
 def isnot_shitsumon(answer):
@@ -47,33 +54,33 @@ def load_corpus():
 
 
 def generate_matrix():
-    corpus = load_corpus()
     D = []
     y = []
     fex = features.IpadicFeature()
     progress = 0
     print('create feature dictionary')
     for q, a in load_corpus():
-        D.extend(fex.transform(q))
+        D.append(list(fex.transform(q)))
         a = normalize.normalize_askfm(a, h2z=False)
         y.append(isnot_shitsumon(a))
         progress += 1
         if progress % 100 == 0:
             print(progress)
 
+    dv = DictVectorizer()
+    dv.fit(itertools.chain(*D))
+
     progress = 0
     print('create feature vector')
-    dv = DictVectorizer()
-    dv.fit(dict(zip(xrange(len(d)), d)) for d in D)
     X = []
-    for q, a in load_corpus():
+    for ds in D:
         count = None
-        for t in fex.transform(q):
-            d = dv.transform(dict(zip(xrange(len(t)), t)))
+        for d in ds:
+            v = dv.transform(d)
             if count is None:
-                count = d
+                count = v
             else:
-                count += d
+                count += v
         X.append(count)
         progress += 1
         if progress % 100 == 0:
@@ -86,14 +93,41 @@ def generate_matrix():
 def predict(text, dv, clf):
     fex = features.IpadicFeature()
     count = None
-    for t in fex.transform(text):
-        d = dv.transform(dict(zip(xrange(len(t)), t)))
+    for d in fex.transform(text):
+        v = dv.transform(d)
         if count is None:
-            count = d
+            count = v
         else:
-            count += d
+            count += v
     C = clf.predict_proba(count)
-    return C[0,1]
+    return C[0, 1]
+
+
+def naive_bayes(n_samples):
+    clf = MultinomialNB()
+    params = {
+        'alpha': numpy.linspace(0, 1, 1000)
+    }
+    return RandomizedSearchCV(clf, params, scoring='f1', n_iter=30, cv=best_cv_num(n_samples), verbose=1)
+
+
+def sgd(n_samples):
+    clf = SGDClassifier(n_iter=best_n_iter(n_samples))
+    params = {
+        'alpha': 10 ** numpy.linspace(-7, -1, 1000),
+    }
+    return RandomizedSearchCV(clf, params, scoring='f1', n_iter=30, cv=best_cv_num(n_samples), verbose=3)
+
+
+def kernel_svc(n_samples):
+    clf = SVC()
+    params = {
+        'C': 2 ** numpy.linspace(-5, 15),
+        'gamma': 2 ** numpy.linspace(-15, 3),
+        'class_weight': [None, 'auto'],
+    }
+    return RandomizedSearchCV(clf, params, scoring='f1', n_iter=30, cv=best_cv_num(n_samples), verbose=3)
+
 
 def main():
     if not os.path.exists('X.pkl') or not os.path.exists('y.pkl') or not os.path.exists('dv.pkl'):
@@ -108,12 +142,11 @@ def main():
 
     if not os.path.exists('clf.pkl'):
         X, y = sklearn.utils.shuffle(X, y)
-
-        clf = MultinomialNB()
-        params = {
-            'alpha': 10 ** numpy.linspace(-10, 0, 1000),
-        }
-        cv = RandomizedSearchCV(clf, params, scoring='f1', n_iter=30, cv=best_cv_num(X.shape[0]), verbose=1)
+        n_samples = X.shape[0]
+        cv = naive_bayes(n_samples)
+        # X = StandardScaler(with_mean=False).fit_transform(X)
+        # cv = sgd(n_samples)
+        # cv = kernel_svc(n_samples)
         cv.fit(X, y)
         print('f1 =', cv.best_score_)
         print(cv.best_params_)
@@ -128,13 +161,13 @@ def main():
             text = line.strip().decode('utf_8')
             proba = predict(text, dv, clf)
             if proba >= 0.5:
-                print('質問ではない。 ({:.2%})'.format(proba))
+                print('質問ではない。({:.2%})'.format(proba))
             else:
-                print('質問である。 ({:.2%})'.format(1-proba))
+                print('質問である。({:.2%})'.format(1 - proba))
     except EOFError:
         pass
 
 if __name__ == '__main__':
-    sys.stdout=codecs.getwriter('utf_8')(sys.stdout)
-    sys.stderr=codecs.getwriter('utf_8')(sys.stderr)
+    sys.stdout = codecs.getwriter('utf_8')(sys.stdout)
+    sys.stderr = codecs.getwriter('utf_8')(sys.stderr)
     main()

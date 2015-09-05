@@ -2,8 +2,9 @@
 from __future__ import division, print_function, unicode_literals
 
 from future_builtins import ascii, filter, hex, map, oct, zip
-import normalize
+
 import morph
+import normalize
 
 
 class UnidicFeature(object):
@@ -14,7 +15,10 @@ class UnidicFeature(object):
         self.dicdir = dicdir
 
     def to_pos(self, surface, features):
-        return features[0], features[0] + '-' + features[1]
+        return features[0]
+
+    def to_pos1(self, surface, features):
+        return features[0] + '-' + features[1]
 
     def to_base(self, surface, features):
         if len(features) > 6:
@@ -23,11 +27,11 @@ class UnidicFeature(object):
             return surface
 
     def transform(self, text):
-        text = normalize.normalize_askfm(text, h2z=True)
+        text = normalize.normalize_askfm(text, h2z=False)
+        fn = {'pos': self.to_pos, 'pos1': self.to_pos1,
+              'base': self.to_base}
         for surface, features in morph.parse(text, opt=self.dicdir):
-            pos = self.to_pos(surface, features)
-            base = self.to_base(surface, features)
-            yield [pos[0], pos[1], base]
+            yield {name: func(surface, features) for name, func in fn.iteritems()}
 
 
 class IpadicFeature(object):
@@ -38,7 +42,16 @@ class IpadicFeature(object):
         self.dicdir = dicdir
 
     def to_pos(self, surface, features):
-        return features[0], features[0] + '-' + features[1]
+        return features[0]
+
+    def to_pos1(self, surface, features):
+        return features[0] + '-' + features[1]
+
+    def to_pos2(self, surface, features):
+        return features[0] + '-' + features[1] + '-' + features[2]
+
+    def to_cform(self, surface, features):
+        return features[5]
 
     def to_base(self, surface, features):
         if features[6] == '*':
@@ -48,7 +61,8 @@ class IpadicFeature(object):
 
     def transform(self, text):
         text = normalize.normalize_askfm(text, h2z=False)
+        # fn = {'pos': self.to_pos, 'pos1': self.to_pos1, 'pos2': self.to_pos2,
+        #       'cform': self.to_cform, 'base': self.to_base}
         for surface, features in morph.parse(text, opt=self.dicdir):
-            pos = self.to_pos(surface, features)
-            base = self.to_base(surface, features)
-            yield [pos[0], pos[1], base]
+            # yield {name: func(surface, features) for name, func in fn.iteritems()}
+            yield {'base': self.to_base(surface, features)}
