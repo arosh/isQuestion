@@ -4,11 +4,12 @@ var casper = require('casper').create();
 var fs = require('fs');
 
 // 読み込み始めるページの番号をコマンドライン引数で与える
-if (casper.cli.args.length < 1) {
-  casper.echo('usage: casperjs get.js BASE');
+if (casper.cli.args.length < 2) {
+  casper.echo('usage: casperjs get.js USERNAME BASE');
   casper.exit();
 }
-var base = parseInt(casper.cli.args[0], 10);
+var username = casper.cli.args[0];
+var base = parseInt(casper.cli.args[1], 10);
 casper.echo('base = ' + base);
 
 // 一度の実行で50ページまで読む
@@ -18,7 +19,7 @@ var clickMax = 30;
 // 進捗
 var progress = 0;
 
-casper.start('http://ask.fm/EzoeRyou', function() {
+casper.start('http://ask.fm/' + username, function() {
   // 最初のページに載ってるquestionBoxはとりあえず消す
   // → 消すとうまく行かなかった。重複はあとで排除するべき
   // this.evaluate(function() {

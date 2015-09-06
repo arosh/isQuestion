@@ -66,3 +66,7 @@ class IpadicFeature(object):
         for surface, features in morph.parse(text, opt=self.dicdir):
             # yield {name: func(surface, features) for name, func in fn.iteritems()}
             yield {'base': self.to_base(surface, features)}
+    
+    def segmentation(self, text):
+        for surface, features in morph.parse(text, opt=self.dicdir):
+            yield self.to_base(surface, features)
