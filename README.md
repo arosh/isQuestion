@@ -4,7 +4,7 @@ ask.fmの質問から質問でないものを集める実験
 
 ## 結果
 
-`active_learning.py`を見て下さい。
+`active_learning.ipynb`を見て下さい。
 
 ## 使い方
 
